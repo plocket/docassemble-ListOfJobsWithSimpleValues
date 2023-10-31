@@ -1,0 +1,66 @@
+---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+---
+modules:
+  - docassemble.ALToolbox.al_income
+---
+objects:
+  - job_list: DAList.using(ask_number=True,complete_attribute="nomore")
+  - job_list[i]: ALSimpleValueList.using(ask_number=True)
+---
+id: how many jobs
+question: |
+  How many jobs do you have?
+fields:
+  - numberjob: job_list.target_number 
+---
+comment: |
+  Note: An ALSimpleValue doesn't require a transaction type in order to work.
+id: values of one job's items
+question: |
+  ${ ordinal(i) } job incomes
+fields:
+  - Wages: job_list[i][0].value
+    datatype: currency
+  - Tips: job_list[i][1].value
+    datatype: currency
+---
+id: summary
+event: summary
+question: |
+  summary: ${ job_list.target_number } jobs
+subquestion: |
+  % for job in job_list:
+  A job:
+  
+  % for item in job:
+  * ${ item.source }: ${ currency( item.value ) }
+  % endfor
+  
+  % endfor
+---
+mandatory: true
+code: |
+  job_list.gather()
+  summary
+---
+code: |
+  job_list[i].target_number = 2
+  job_list[i].gather()
+  job_list[i].nomore = True
+---
+generic object: ALSimpleValueList
+code: |
+  x[0].source = "wages"
+---
+generic object: ALSimpleValueList
+code: |
+  x[1].source = "tips"
+---
+generic object: ALSimpleValueList
+code: |
+  x[i].source
+  x[i].value
+  x[i].complete = True
+---
