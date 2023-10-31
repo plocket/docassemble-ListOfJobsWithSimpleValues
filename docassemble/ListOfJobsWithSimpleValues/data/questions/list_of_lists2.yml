@@ -37,6 +37,7 @@ subquestion: |
   % for item in job:
   * ${ item.source }: ${ currency( item.value ) }
   % endfor
+  * Total: ${ currency( job.total() ) }
   
   % endfor
 ---

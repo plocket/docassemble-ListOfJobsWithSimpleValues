@@ -46,7 +46,7 @@ def find_package_data(where='.', package='', exclude=standard_exclude, exclude_d
 setup(name='docassemble.ListOfJobsWithSimpleValues',
       version='0.0.1',
       description=('A demo of gathering a job list using ALSimpleValues for each job'),
-      long_description='# docassemble.ListOfJobsWithSimpleValues\n\nA demo of gathering a job list using ALSimpleValues for each job\n\n## Author\n\nmb.restless.tech@gmail.com\n\n',
+      long_description='# docassemble.ListOfJobsWithSimpleValues\r\n\r\nA demo of gathering a job list using ALSimpleValues for each job\r\n\r\n## Author\r\n\r\nmb.restless.tech@gmail.com\r\n\r\n',
       long_description_content_type='text/markdown',
       author='',
       author_email='52798256+plocket@users.noreply.github.com',
