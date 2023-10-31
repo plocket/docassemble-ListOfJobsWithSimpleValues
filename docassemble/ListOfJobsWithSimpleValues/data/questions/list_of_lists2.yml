@@ -40,6 +40,9 @@ subquestion: |
   * Total: ${ currency( job.total() ) }
   
   % endfor
+  
+  Total wages: ${ currency(sum( [ job[0].total() for job in job_list ] )) }[BR]
+  Total tips: ${ currency(sum( [ job[1].total() for job in job_list ] )) }
 ---
 mandatory: true
 code: |
