@@ -1,23 +1,85 @@
 ---
 include:
   - docassemble.AssemblyLine:assembly_line.yml
+  # Avoid including `al_income.yml` if you want to make up your own way
 ---
 modules:
   - docassemble.ALToolbox.al_income
 ---
+comment: |
+  A note on using ALSimpleValueList
+
+  The structure of these lists and their items looks a little like this (not code at all):
+  job_list[ job0[ income0.value ] ]
+  
+  To be a little more code-ish about it (though not completely):
+  # job_list
+  [
+    # job_list[0]
+    [
+      # job_list[0][0]
+      { value: 500, source: "wages" },
+      
+      # job_list[0][1]
+      { value: 150, source: "tips" },
+      
+      ...
+    ],
+    # job_list[1]
+    [
+      # job_list[1][0]
+      { value: 100, source: "wages" },
+      
+      # job_list[1][1]
+      { value: 0, source: "tips" },
+      
+      ...
+    ],
+    
+    ...
+  ]
+---
 objects:
-  - job_list: DAList.using(ask_number=True,complete_attribute="nomore")
+  - job_list: DAList.using(ask_number=True, complete_attribute="nomore")
   - job_list[i]: ALSimpleValueList.using(ask_number=True)
 ---
+id: interview order
+mandatory: true
+code: |
+  # This triggers getting each job (job_list[i])
+  # Getting a job means getting it's `.nomore` attribute (job_list[i].nomore)
+  # That's because we set `complete_attribute` to "nomore" in the
+  # `objects:` block.
+  job_list.gather()
+  # This triggers the last page
+  summary
+---
+comment: |
+  This is exactly what da first looks for - the right variable name, `job_list`, with the right attribute, `.target_number`
 id: how many jobs
 question: |
   How many jobs do you have?
 fields:
-  - numberjob: job_list.target_number 
+  - Number of jobs: job_list.target_number 
 ---
 comment: |
-  Note: An ALSimpleValue doesn't require a transaction type in order to work.
-id: values of one job's items
+  `.nomore` is at the bottom of this. Docassemble is searching for `.nomore`. First it looks for `job_list[0].nomore` in the whole file. It can't find it, so it looks for `job_list[i].nomore` and sees that it's in here.
+  To get to that definition, though, it needs to go through the whole code block just as we intended, doing all the operations along the way.
+  Next loop around, it'll look for `job_list[1].nomore` (the second job's `.nomore` attribute)
+id: define a single job
+code: |
+  # Avoid asking the user for the target number. We already know how many there are - "wages" and "tips". If there are more, we should make this number bigger.
+  job_list[i].target_number = 2
+  # This `.gather()` triggers getting the items in a single job. It'll trigger looking for the `.value` of the first object in the job because `.value` is special to docassemble.
+  job_list[i].gather()
+  # Once the job's incomes have been gathered, we tell docassemble that getting the job is complete. It can go back to the block it came from.
+  job_list[i].nomore = True
+---
+comment: |
+  First da will look through the whole file for `job_list[0][0].value`, but we don't define that, so then da will look through the whole file for something with an `i`, like `job_list[i][0]`, and it'll find that here.
+  
+  Btw, `.value` is a special attribute docassemble looks for sometimes in order to decide that it's done gathering an item.
+id: define the incomes for one job
 question: |
   ${ ordinal(i) } job incomes
 fields:
@@ -25,6 +87,16 @@ fields:
     datatype: currency
   - Tips: job_list[i][1].value
     datatype: currency
+---
+# The summary needs the name of the `.source` (type) of the 1st income in each job. The developer knows what the sources are, so they define it instead of asking the user.
+generic object: ALSimpleValueList
+code: |
+  x[0].source = "wages"
+---
+# The summary needs the name of the `.source` (type) of the 2nd item in each job
+generic object: ALSimpleValueList
+code: |
+  x[1].source = "tips"
 ---
 id: summary
 event: summary
@@ -42,29 +114,73 @@ subquestion: |
   % endfor
   
   Total wages: ${ currency(sum( [ job[0].total() for job in job_list ] )) }[BR]
-  Total tips: ${ currency(sum( [ job[1].total() for job in job_list ] )) }
+  code: `currency(sum( [ job[0].total() for job in job_list ] ))`
+  
+  Total tips: ${ currency(sum( [ job[1].total() for job in job_list ] )) }[BR]
+  code: `currency(sum( [ job[1].total() for job in job_list ] ))`
+  
+  Totals total: ${ currency(sum( [ job.total() for job in job_list ] )) }[BR]
+  code: `currency(sum( [ job.total() for job in job_list ] ))`
 ---
-mandatory: true
+comment: |
+  The code above using sum is very condensed:
+  currency(sum( [ job[0].total() for job in job_list ] ))
+  
+  The code below does the same thing, just using more space. Unfortunately:
+  1. It's hard to use this code in Mako
+  2. Intermediate variables, like `wage_total_currency` below, become out of date in docassemble and become complicated to update.
 code: |
-  job_list.gather()
-  summary
+  all_wage_amounts = []
+  for job in job_list:
+    # The first item in each job (job[0]) is the `wages` object
+    all_wage_amounts.append( job[0].total() )
+    
+  total_wages = sum( all_wage_amounts )
+  wage_total_currency = currency( total_wages )
 ---
-code: |
-  job_list[i].target_number = 2
-  job_list[i].gather()
-  job_list[i].nomore = True
+# Different ways to show the results depending on the data model you use:
 ---
-generic object: ALSimpleValueList
-code: |
-  x[0].source = "wages"
+comment: |
+  No AL stuff at all
+
+  The mental model that your brain keeps reaching for:
+  job_list[ job0.wages ]
+  job_list[ job0.tips ]
+  
+  A job total:
+  First job total: job_list[0].wages + job_list[0].tips + ...
+  
+  The mental model for getting all wages of all jobs:
+  Total wages: job_list[0].wages + job_list[1].wages + job_list[2].wages + ...
+  
+  You can't know how many jobs you'll have, though, so this is the way to do it dynamically:
+  Total wages: sum( [ job.wages for job in job_list ] )
+  
+  The mental model for getting all totals for all jobs:
+  sum( job.wages for job in job_list ) + sum( job.tips for job in job_list ) + ...
+  
+  I don't know any one-line way to do sum the totals for all jobs dynamically.
 ---
-generic object: ALSimpleValueList
-code: |
-  x[1].source = "tips"
+comment: |
+  The ALSimpleValueList way, the initial commit for this repo
+  
+  To review, the mental model:
+  job_list[ job0[ income0.value ] ]
+  
+  Other attributes of these objects:
+  job0.source (job title)
+  income0.source (income type)
+
+  Total wages: currency(sum( [ job[0].total() for job in job_list ] ))
+  Total tips: currency(sum( [ job[1].total() for job in job_list ] ))
+  
+  All Totals: currency(sum( [ job.total() for job in job_list ] ))
 ---
-generic object: ALSimpleValueList
-code: |
-  x[i].source
-  x[i].value
-  x[i].complete = True
+comment: |
+  The ALItemizedJob way:
+  
+  wages: ${ job_list.total(source="wages") }
+  tips: ${ job_list.total(source="tips") }
+  
+  all totals:  ${ job_list.total() }
 ---
