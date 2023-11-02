@@ -125,6 +125,7 @@ subquestion: |
 comment: |
   The code above using sum is very condensed:
   currency(sum( [ job[0].total() for job in job_list ] ))
+  In python, the thing inside the square brackets is called a "list comprehension"
   
   The code below does the same thing, just using more space. Unfortunately:
   1. It's hard to use this code in Mako
